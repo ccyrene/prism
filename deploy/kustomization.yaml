@@ -1,0 +1,28 @@
+# Kustomization tying the Prism deployment together.
+#
+#   kubectl apply -k deploy/
+#
+# Apply order is handled by kustomize/kubectl: the Namespace is created before
+# the namespaced ServiceAccount and DaemonSet. RBAC (ClusterRole/Binding) is
+# cluster-scoped and references the SA by namespace/name.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - namespace.yaml
+  - rbac.yaml
+  - daemonset.yaml
+
+# Common labels applied to every resource for easy selection:
+#   kubectl get all -n prism-system -l app.kubernetes.io/part-of=prism-bus
+labels:
+  - pairs:
+      app.kubernetes.io/part-of: prism-bus
+    includeSelectors: false
+
+# Pin the image tag in one place. Override at deploy time without editing YAML:
+#   kubectl kustomize deploy/ | sed ...        (or)
+#   cd deploy && kustomize edit set image prism/prismd:dev=prism/prismd:v0.1.0
+images:
+  - name: prism/prismd
+    newTag: dev

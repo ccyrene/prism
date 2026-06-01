@@ -1,0 +1,17 @@
+# Namespace for all Prism workload-identity-bus components.
+#
+# prismd runs here as a DaemonSet (one Pod per node). Keeping it in its own
+# namespace makes RBAC, quotas, and "kubectl get all -n prism-system" tidy.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: prism-system
+  labels:
+    app.kubernetes.io/name: prism
+    app.kubernetes.io/part-of: prism-bus
+    # If you run Pod Security Admission, prismd needs a privileged profile
+    # (it mounts hostPaths and loads BPF). Label the namespace accordingly so
+    # the privileged DaemonSet is admitted. Comment out if PSA is not enforced.
+    pod-security.kubernetes.io/enforce: privileged
+    pod-security.kubernetes.io/audit: privileged
+    pod-security.kubernetes.io/warn: privileged

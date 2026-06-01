@@ -1,0 +1,79 @@
+# Monitoring wiring for prismd.
+#
+# prismd already serves Prometheus exposition on container port 9464 (named
+# "metrics") at /metrics, alongside /healthz and /readyz. The DaemonSet's Pod
+# template ALSO carries prometheus.io/scrape annotations, so a plain Prometheus
+# using annotation-based (pod) service discovery scrapes prismd with NO extra
+# objects — this file is not required for that path.
+#
+# This file adds two things for richer setups:
+#   (a) a headless Service "prismd-metrics" — a stable, named endpoint for the
+#       per-node prismd Pods (handy for ad-hoc curl, dashboards, ServiceMonitor
+#       users, or DNS-based discovery of the metrics endpoints).
+#   (b) a Prometheus-Operator PodMonitor — the Operator's CRD-driven scrape
+#       config. Because prismd is a DaemonSet (one Pod per node), a PodMonitor
+#       (which scrapes Pods directly) is the natural fit: every node's instance
+#       is scraped on its own metrics port without funnelling through a Service.
+#
+# NOTE: the PodMonitor's apiVersion (monitoring.coreos.com/v1) is a CRD that
+# ONLY exists if the Prometheus Operator is installed in the cluster. Without
+# it, `kubectl apply` of the PodMonitor fails with "no matches for kind". If you
+# are not running the Operator, omit this file and rely on the annotation-based
+# scrape above, or apply only the Service below.
+---
+# (a) Headless Service selecting the prismd DaemonSet Pods.
+#
+# Headless (clusterIP: None): we want the set of per-node Pod endpoints, not a
+# single load-balanced VIP — metrics are per-instance and must be scraped from
+# every node's Pod. The selector matches the DaemonSet Pod-template labels in
+# deploy/daemonset.yaml. Port name "metrics" matches the container port name so
+# both annotation-based and Operator-based scrapers can reference it by name.
+apiVersion: v1
+kind: Service
+metadata:
+  name: prismd-metrics
+  namespace: prism-system
+  labels:
+    app.kubernetes.io/name: prism
+    app.kubernetes.io/component: daemon
+spec:
+  type: ClusterIP
+  clusterIP: None # headless: expose individual per-node Pod endpoints
+  selector:
+    app.kubernetes.io/name: prism
+    app.kubernetes.io/component: daemon
+  ports:
+    - name: metrics
+      port: 9464
+      targetPort: metrics # the container port named "metrics" (9464)
+      protocol: TCP
+---
+# (b) Prometheus-Operator PodMonitor.
+#
+# Requires the Prometheus Operator (CRD monitoring.coreos.com/v1 PodMonitor).
+# It scrapes the prismd Pods directly (no Service needed) on the port named
+# "metrics" at /metrics every 30s. The selector matches the daemon Pods by
+# their app.kubernetes.io/name label; namespaceSelector pins it to prism-system.
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: prismd
+  namespace: prism-system
+  labels:
+    app.kubernetes.io/name: prism
+    app.kubernetes.io/component: daemon
+spec:
+  # Match the prismd DaemonSet Pods by their stable label.
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: prism
+  # Only look for those Pods in prism-system (where the DaemonSet runs).
+  namespaceSelector:
+    matchNames:
+      - prism-system
+  podMetricsEndpoints:
+    # Reference the container port BY NAME ("metrics" == 9464) so this stays
+    # correct even if the numeric port ever changes.
+    - port: metrics
+      path: /metrics
+      interval: 30s

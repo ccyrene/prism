@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Prism — Architecture at a Glance</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --navy:#0a1929;
+    --navy-soft:#132c44;
+    --k8s-blue:#326ce5;
+    --accent:#00d68f;
+    --amber:#ffb547;
+    --magenta:#e94f8a;
+    --text:#d6e2f0;
+    --text-dim:#8ba2bc;
+    --border:rgba(139,162,188,.18);
+    --card:rgba(19,44,68,.55);
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:
+      radial-gradient(1200px 700px at 78% -8%, rgba(50,108,229,.20), transparent 60%),
+      radial-gradient(900px 600px at 8% 4%, rgba(0,214,143,.10), transparent 55%),
+      var(--navy);
+    color:var(--text);
+    font-family:'Inter','Sarabun',system-ui,sans-serif;
+    line-height:1.62;
+    font-size:16px;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1080px;margin:0 auto;padding:0 24px 90px;}
+  .mono{font-family:'JetBrains Mono',ui-monospace,monospace;}
+
+  /* ---------- HEADER ---------- */
+  header.hero{padding:64px 0 30px;border-bottom:1px solid var(--border);margin-bottom:18px;}
+  .eyebrow{
+    display:inline-block;font-size:12.5px;letter-spacing:.22em;text-transform:uppercase;
+    color:var(--k8s-blue);font-weight:700;border:1px solid rgba(50,108,229,.4);
+    border-radius:999px;padding:5px 14px;margin-bottom:20px;background:rgba(50,108,229,.08);
+  }
+  h1{
+    font-size:clamp(30px,5vw,46px);line-height:1.06;margin:0 0 16px;font-weight:800;letter-spacing:-.02em;
+    background:linear-gradient(110deg,#fff 10%,var(--accent) 60%,var(--k8s-blue) 100%);
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+  }
+  .lead-th{font-family:'Sarabun','Inter',sans-serif;font-size:17.5px;color:var(--text);max-width:840px;margin:0 0 8px;}
+  .lead-th b{color:var(--accent);font-weight:700;}
+  .lead-th .not{color:var(--magenta);font-weight:700;}
+  .lead-en{font-size:14.5px;color:var(--text-dim);max-width:840px;margin:0;}
+
+  /* ---------- DIAGRAM BLOCKS ---------- */
+  section{margin:46px 0;}
+  .kicker{font-size:12.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--accent);font-weight:700;margin:0 0 6px;}
+  .diag-title{font-size:24px;font-weight:700;color:#fff;margin:0 0 18px;letter-spacing:-.01em;}
+  .figbox{
+    background:var(--card);border:1px solid var(--border);border-radius:18px;
+    padding:24px 22px 18px;margin:0;overflow-x:auto;
+  }
+  .figbox svg{display:block;width:100%;height:auto;}
+  figure{margin:0;}
+  figcaption{margin-top:16px;padding-top:14px;border-top:1px solid var(--border);}
+  figcaption .th{font-family:'Sarabun','Inter',sans-serif;font-size:15px;color:var(--text);font-weight:600;}
+  figcaption .en{font-size:13px;color:var(--text-dim);margin-top:2px;}
+
+  .legend{display:flex;flex-wrap:wrap;gap:16px;margin:16px 0 0;font-size:12.5px;color:var(--text-dim);}
+  .legend span{display:inline-flex;align-items:center;gap:7px;}
+  .legend i{width:13px;height:13px;border-radius:3px;display:inline-block;}
+
+  footer{margin-top:60px;padding-top:24px;border-top:1px solid var(--border);font-size:12.5px;color:var(--text-dim);}
+  footer .mono{color:var(--text);}
+
+  /* SVG shared text classes */
+  .svg-label{font-family:'Inter',sans-serif;}
+  .svg-mono{font-family:'JetBrains Mono',monospace;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- ============ HEADER ============ -->
+  <header class="hero">
+    <span class="eyebrow">Architecture &middot; ภาพรวมสถาปัตยกรรม</span>
+    <h1>Prism — Workload Identity Bus</h1>
+    <p class="lead-th">
+      Prism <b>คือ</b> เดมอนเล็ก ๆ ต่อโหนด (prismd) ที่เฝ้าดู Pod ของ Kubernetes
+      แล้วแปลง label เป็น <b>identity เลข 24-bit</b> หนึ่งค่า เขียนลง eBPF map ที่แชร์ร่วมกัน (pinned)
+      เพียงแผนที่เดียว เพื่อให้ระบบย่อย eBPF ทุกตัวอ่านได้แบบ O(1) — แผนที่นี้คือ “บัส” กลางของ identity.
+    </p>
+    <p class="lead-th">
+      Prism <span class="not">ไม่ใช่</span> ตัวจัดคิว (scheduler) และ <span class="not">ไม่ใช่</span> Cilium
+      หรือตัวแทนของ Cilium; มันดึงเอา “แนวคิด identity” ออกมาเป็นชั้นกลางเป็นกลางที่ network, scheduling และ
+      security ต่างก็มาเสียบใช้ร่วมกันได้.
+    </p>
+    <p class="lead-en">
+      Prism is a thin per-node daemon that turns pod labels into one 24-bit identity in a single shared,
+      pinned eBPF map — read O(1) by many subsystems. It is not a scheduler and not Cilium.
+    </p>
+  </header>
+
+  <!-- ============ DIAGRAM A ============ -->
+  <section>
+    <p class="kicker">Diagram A</p>
+    <h2 class="diag-title">What Prism does — สิ่งที่ Prism ทำ</h2>
+    <div class="figbox">
+      <figure>
+        <svg viewBox="0 0 1040 470" role="img" aria-label="Flow from Kubernetes API through prismd into a shared eBPF map read by three consumers">
+          <defs>
+            <marker id="arrA" markerWidth="11" markerHeight="11" refX="8" refY="4" orient="auto">
+              <path d="M0,0 L9,4 L0,8 Z" fill="#8ba2bc"/>
+            </marker>
+            <marker id="arrAg" markerWidth="11" markerHeight="11" refX="8" refY="4" orient="auto">
+              <path d="M0,0 L9,4 L0,8 Z" fill="#00d68f"/>
+            </marker>
+            <marker id="arrAb" markerWidth="11" markerHeight="11" refX="8" refY="4" orient="auto">
+              <path d="M0,0 L9,4 L0,8 Z" fill="#326ce5"/>
+            </marker>
+          </defs>
+
+          <!-- 1. Kubernetes API -->
+          <rect x="20" y="150" width="190" height="120" rx="12" fill="rgba(50,108,229,.12)" stroke="#326ce5" stroke-width="1.5"/>
+          <text x="115" y="183" text-anchor="middle" class="svg-label" fill="#cfe0ff" font-size="15" font-weight="700">Kubernetes API</text>
+          <text x="115" y="210" text-anchor="middle" class="svg-label" fill="#d6e2f0" font-size="12.5">pods + labels</text>
+          <text x="115" y="232" text-anchor="middle" class="svg-mono" fill="#8ba2bc" font-size="11">app=web</text>
+          <text x="115" y="250" text-anchor="middle" class="svg-mono" fill="#8ba2bc" font-size="11">tier=frontend</text>
+
+          <!-- watch arrow -->
+          <line x1="212" y1="210" x2="282" y2="210" stroke="#8ba2bc" stroke-width="2" marker-end="url(#arrA)"/>
+          <text x="247" y="200" text-anchor="middle" class="svg-mono" fill="#8ba2bc" font-size="11">watch</text>
+
+          <!-- 2. prismd -->
+          <rect x="284" y="120" width="206" height="180" rx="12" fill="rgba(0,214,143,.10)" stroke="#00d68f" stroke-width="1.5"/>
+          <text x="387" y="148" text-anchor="middle" class="svg-mono" fill="#00d68f" font-size="15" font-weight="700">prismd</text>
+          <text x="387" y="166" text-anchor="middle" class="svg-label" fill="#8ba2bc" font-size="11">per-node daemon</text>
+          <line x1="300" y1="178" x2="474" y2="178" stroke="rgba(139,162,188,.25)" stroke-width="1"/>
+          <text x="306" y="205" class="svg-label" fill="#d6e2f0" font-size="12.5"><tspan fill="#00d68f" font-weight="700">1</tspan>  watch pods</text>
+          <text x="306" y="232" class="svg-label" fill="#d6e2f0" font-size="12.5"><tspan fill="#00d68f" font-weight="700">2</tspan>  derive identity</text>
+          <text x="306" y="259" class="svg-label" fill="#d6e2f0" font-size="12.5"><tspan fill="#00d68f" font-weight="700">3</tspan>  publish to map</text>
+          <text x="387" y="286" text-anchor="middle" class="svg-mono" fill="#8ba2bc" font-size="9.5">~13 ns resolve · ~0.7 µs propagate</text>
+
+          <!-- writes arrow -->
+          <line x1="492" y1="210" x2="562" y2="210" stroke="#00d68f" stroke-width="2" marker-end="url(#arrAg)"/>
+          <text x="527" y="200" text-anchor="middle" class="svg-mono" fill="#00d68f" font-size="11">writes</text>
+
+          <!-- 3. shared eBPF map (the bus) -->
+          <rect x="564" y="120" width="222" height="180" rx="12" fill="rgba(255,181,71,.10)" stroke="#ffb547" stroke-width="2"/>
+          <text x="675" y="147" text-anchor="middle" class="svg-mono" fill="#ffb547" font-size="14.5" font-weight="700">prism_identity</text>
+          <text x="675" y="166" text-anchor="middle" class="svg-label" fill="#d6e2f0" font-size="11.5">ONE shared, pinned eBPF map</text>
+          <rect x="582" y="182" width="186" height="58" rx="8" fill="rgba(10,25,41,.6)" stroke="rgba(255,181,71,.4)" stroke-width="1"/>
+          <text x="675" y="204" text-anchor="middle" class="svg-mono" fill="#8ba2bc" font-size="11">key = cgroup-id</text>
+          <text x="675" y="225" text-anchor="middle" class="svg-mono" fill="#d6e2f0" font-size="11">val = 24-bit identity</text>
+          <text x="675" y="270" text-anchor="middle" class="svg-label" fill="#ffb547" font-size="13.5" font-weight="700">= the bus</text>
+          <text x="675" y="288" text-anchor="middle" class="svg-label" fill="#8ba2bc" font-size="11">บัสกลางของ identity</text>
+
+          <!-- O(1) read arrows to three consumers -->
+          <line x1="788" y1="170" x2="852" y2="78"  stroke="#326ce5" stroke-width="2" marker-end="url(#arrAb)"/>
+          <line x1="788" y1="210" x2="852" y2="210" stroke="#326ce5" stroke-width="2" marker-end="url(#arrAb)"/>
+          <line x1="788" y1="250" x2="852" y2="342" stroke="#326ce5" stroke-width="2" marker-end="url(#arrAb)"/>
+          <text x="812" y="120" text-anchor="middle" class="svg-mono" fill="#326ce5" font-size="11" transform="rotate(-32 812 120)">O(1) read</text>
+
+          <!-- consumer: sched_ext -->
+          <rect x="854" y="44" width="166" height="62" rx="10" fill="rgba(19,44,68,.7)" stroke="#326ce5" stroke-width="1.3"/>
+          <text x="937" y="70" text-anchor="middle" class="svg-mono" fill="#cfe0ff" font-size="13" font-weight="700">sched_ext</text>
+          <text x="937" y="90" text-anchor="middle" class="svg-mono" fill="#00d68f" font-size="10">flag: SCHED_MANAGED</text>
+
+          <!-- consumer: tc / net policy -->
+          <rect x="854" y="179" width="166" height="62" rx="10" fill="rgba(19,44,68,.7)" stroke="#326ce5" stroke-width="1.3"/>
+          <text x="937" y="205" text-anchor="middle" class="svg-mono" fill="#cfe0ff" font-size="13" font-weight="700">tc / net policy</text>
+          <text x="937" y="225" text-anchor="middle" class="svg-mono" fill="#00d68f" font-size="10">flag: NET_POLICY</text>
+
+          <!-- consumer: tracing / observe -->
+          <rect x="854" y="314" width="166" height="62" rx="10" fill="rgba(19,44,68,.7)" stroke="#326ce5" stroke-width="1.3"/>
+          <text x="937" y="340" text-anchor="middle" class="svg-mono" fill="#cfe0ff" font-size="13" font-weight="700">tracing / observe</text>
+          <text x="937" y="360" text-anchor="middle" class="svg-mono" fill="#00d68f" font-size="10">flag: OBSERVED</text>
+
+          <!-- Linux kernel substrate -->
+          <rect x="564" y="402" width="456" height="46" rx="10" fill="rgba(139,162,188,.08)" stroke="rgba(139,162,188,.35)" stroke-width="1.2"/>
+          <text x="792" y="430" text-anchor="middle" class="svg-label" fill="#8ba2bc" font-size="13" font-weight="600">Linux kernel — all consumers run here</text>
+          <!-- consumers down into kernel -->
+          <line x1="937" y1="106" x2="937" y2="402" stroke="rgba(139,162,188,.3)" stroke-width="1.2" stroke-dasharray="3 4"/>
+          <line x1="937" y1="241" x2="937" y2="402" stroke="rgba(139,162,188,.3)" stroke-width="1.2" stroke-dasharray="3 4"/>
+        </svg>
+        <figcaption>
+          <div class="th">หนึ่ง identity ถูกคำนวณครั้งเดียวใน prismd แล้วเขียนลงแผนที่ที่แชร์ร่วมกัน — ผู้ใช้ทุกตัวอ่านแบบ O(1).</div>
+          <div class="en">Identity is derived once in prismd and published to one shared map; every eBPF consumer reads it O(1).</div>
+          <div class="en">The map is <b>BPF_F_RDONLY_PROG</b> — read-only to all consumers (writers are rejected by the verifier); <b>prismd is the sole writer</b> (userspace bpf(2) syscall). Verified on a real 6.1 kernel.</div>
+        </figcaption>
+      </figure>
+      <div class="legend">
+        <span><i style="background:#326ce5"></i> Kubernetes / consumers</span>
+        <span><i style="background:#00d68f"></i> prismd (control plane)</span>
+        <span><i style="background:#ffb547"></i> shared eBPF map = the bus</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ DIAGRAM B ============ -->
+  <section>
+    <p class="kicker">Diagram B</p>
+    <h2 class="diag-title">Prism vs Cilium — same idea, different layer</h2>
+    <div class="figbox">
+      <figure>
+        <svg viewBox="0 0 1040 430" role="img" aria-label="Cilium is a full networking dataplane with a small networking-only identity inside; Prism is a thin generalized identity bus tapped by net, sched and security">
+          <!-- CILIUM big block -->
+          <rect x="30" y="40" width="430" height="320" rx="16" fill="rgba(50,108,229,.08)" stroke="#326ce5" stroke-width="1.6"/>
+          <text x="245" y="72" text-anchor="middle" class="svg-label" fill="#cfe0ff" font-size="17" font-weight="800">Cilium</text>
+          <text x="245" y="93" text-anchor="middle" class="svg-label" fill="#8ba2bc" font-size="12.5">full networking dataplane — does far more</text>
+
+          <!-- cilium feature chips -->
+          <g class="svg-mono" font-size="11.5" fill="#cfe0ff">
+            <rect x="56"  y="112" width="118" height="34" rx="7" fill="rgba(50,108,229,.16)" stroke="rgba(50,108,229,.4)"/>
+            <text x="115" y="134" text-anchor="middle">routing</text>
+            <rect x="186" y="112" width="118" height="34" rx="7" fill="rgba(50,108,229,.16)" stroke="rgba(50,108,229,.4)"/>
+            <text x="245" y="134" text-anchor="middle">load-balancing</text>
+            <rect x="316" y="112" width="118" height="34" rx="7" fill="rgba(50,108,229,.16)" stroke="rgba(50,108,229,.4)"/>
+            <text x="375" y="134" text-anchor="middle">net policy</text>
+            <rect x="56"  y="156" width="118" height="34" rx="7" fill="rgba(50,108,229,.16)" stroke="rgba(50,108,229,.4)"/>
+            <text x="115" y="178" text-anchor="middle">encryption</text>
+            <rect x="186" y="156" width="118" height="34" rx="7" fill="rgba(50,108,229,.16)" stroke="rgba(50,108,229,.4)"/>
+            <text x="245" y="178" text-anchor="middle">observability</text>
+            <rect x="316" y="156" width="118" height="34" rx="7" fill="rgba(50,108,229,.16)" stroke="rgba(50,108,229,.4)"/>
+            <text x="375" y="178" text-anchor="middle">service mesh</text>
+          </g>
+
+          <!-- inner identity piece (networking-only) -->
+          <rect x="120" y="222" width="250" height="106" rx="11" fill="rgba(233,79,138,.12)" stroke="#e94f8a" stroke-width="1.5"/>
+          <text x="245" y="250" text-anchor="middle" class="svg-mono" fill="#e94f8a" font-size="13.5" font-weight="700">identity</text>
+          <text x="245" y="272" text-anchor="middle" class="svg-label" fill="#d6e2f0" font-size="11.5">small inner piece</text>
+          <text x="245" y="294" text-anchor="middle" class="svg-label" fill="#8ba2bc" font-size="11.5">used ONLY for networking</text>
+          <text x="245" y="314" text-anchor="middle" class="svg-label" fill="#8ba2bc" font-size="11">ใช้กับเครือข่ายเท่านั้น</text>
+
+          <!-- vs separator -->
+          <text x="500" y="205" text-anchor="middle" class="svg-label" fill="#8ba2bc" font-size="15" font-weight="700">vs</text>
+          <line x1="500" y1="60" x2="500" y2="180" stroke="rgba(139,162,188,.25)" stroke-width="1" stroke-dasharray="3 5"/>
+          <line x1="500" y1="225" x2="500" y2="360" stroke="rgba(139,162,188,.25)" stroke-width="1" stroke-dasharray="3 5"/>
+
+          <!-- PRISM thin bus layer -->
+          <text x="785" y="72" text-anchor="middle" class="svg-mono" fill="#00d68f" font-size="17" font-weight="800">Prism</text>
+          <text x="785" y="93" text-anchor="middle" class="svg-label" fill="#8ba2bc" font-size="12.5">a thin, neutral identity layer — generalized</text>
+
+          <!-- three tappers above the bus -->
+          <g class="svg-mono" font-size="12">
+            <rect x="552" y="120" width="130" height="40" rx="8" fill="rgba(19,44,68,.7)" stroke="#326ce5"/>
+            <text x="617" y="145" text-anchor="middle" fill="#cfe0ff">network</text>
+            <rect x="700" y="120" width="130" height="40" rx="8" fill="rgba(19,44,68,.7)" stroke="#ffb547"/>
+            <text x="765" y="145" text-anchor="middle" fill="#ffd9a0">scheduling</text>
+            <rect x="848" y="120" width="130" height="40" rx="8" fill="rgba(19,44,68,.7)" stroke="#e94f8a"/>
+            <text x="913" y="145" text-anchor="middle" fill="#f6b7d0">security</text>
+          </g>
+
+          <!-- taps -->
+          <line x1="617" y1="160" x2="617" y2="232" stroke="#326ce5" stroke-width="2"/>
+          <circle cx="617" cy="232" r="4" fill="#326ce5"/>
+          <line x1="765" y1="160" x2="765" y2="232" stroke="#ffb547" stroke-width="2"/>
+          <circle cx="765" cy="232" r="4" fill="#ffb547"/>
+          <line x1="913" y1="160" x2="913" y2="232" stroke="#e94f8a" stroke-width="2"/>
+          <circle cx="913" cy="232" r="4" fill="#e94f8a"/>
+
+          <!-- the bus bar -->
+          <rect x="540" y="232" width="460" height="56" rx="12" fill="rgba(0,214,143,.12)" stroke="#00d68f" stroke-width="2"/>
+          <text x="770" y="258" text-anchor="middle" class="svg-mono" fill="#00d68f" font-size="13.5" font-weight="700">prism_identity — shared identity bus</text>
+          <text x="770" y="277" text-anchor="middle" class="svg-label" fill="#8ba2bc" font-size="11.5">net + sched + security all tap the same identity</text>
+
+          <!-- clarifying note under prism -->
+          <rect x="540" y="312" width="460" height="48" rx="10" fill="rgba(255,181,71,.08)" stroke="rgba(255,181,71,.4)" stroke-width="1"/>
+          <text x="770" y="333" text-anchor="middle" class="svg-label" fill="#ffb547" font-size="12.5" font-weight="700">Prism = the generalized identity layer — NOT a replacement for Cilium</text>
+          <text x="770" y="351" text-anchor="middle" class="svg-label" fill="#8ba2bc" font-size="11.5">Prism คือชั้น identity ทั่วไป ไม่ได้มาแทน Cilium ซึ่งทำงานมากกว่ามาก</text>
+        </svg>
+        <figcaption>
+          <div class="th">Cilium = ดาต้าเพลนเครือข่ายเต็มรูปแบบ (มี identity อยู่ข้างในเพื่องานเครือข่าย); Prism = ดึงแค่ความคิด identity ออกมาเป็นชั้นกลางที่ทุกระบบใช้ร่วมกัน.</div>
+          <div class="en">Cilium is a full networking dataplane with identity inside it; Prism generalizes just the identity idea into a shared layer for net + sched + security — same idea, different layer.</div>
+        </figcaption>
+      </figure>
+      <div class="legend">
+        <span><i style="background:#326ce5"></i> Cilium platform</span>
+        <span><i style="background:#e94f8a"></i> identity (Cilium: net-only)</span>
+        <span><i style="background:#00d68f"></i> Prism identity bus</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ DIAGRAM C ============ -->
+  <section>
+    <p class="kicker">Diagram C</p>
+    <h2 class="diag-title">One identity, three facets — composability</h2>
+    <div class="figbox">
+      <figure>
+        <svg viewBox="0 0 1040 400" role="img" aria-label="One central identity value with three arrows to net, sched and observe, each toggling its own flag bit">
+          <defs>
+            <marker id="arrCb" markerWidth="11" markerHeight="11" refX="8" refY="4" orient="auto"><path d="M0,0 L9,4 L0,8 Z" fill="#326ce5"/></marker>
+            <marker id="arrCa" markerWidth="11" markerHeight="11" refX="8" refY="4" orient="auto"><path d="M0,0 L9,4 L0,8 Z" fill="#ffb547"/></marker>
+            <marker id="arrCm" markerWidth="11" markerHeight="11" refX="8" refY="4" orient="auto"><path d="M0,0 L9,4 L0,8 Z" fill="#e94f8a"/></marker>
+          </defs>
+
+          <!-- central identity -->
+          <circle cx="200" cy="200" r="92" fill="rgba(0,214,143,.10)" stroke="#00d68f" stroke-width="2"/>
+          <text x="200" y="178" text-anchor="middle" class="svg-label" fill="#d6e2f0" font-size="13">one identity</text>
+          <text x="200" y="206" text-anchor="middle" class="svg-mono" fill="#00d68f" font-size="22" font-weight="700">0x01F4A2</text>
+          <text x="200" y="230" text-anchor="middle" class="svg-label" fill="#8ba2bc" font-size="11.5">24-bit · derived once</text>
+
+          <!-- three arrows out -->
+          <line x1="290" y1="150" x2="560" y2="80"  stroke="#326ce5" stroke-width="2.2" marker-end="url(#arrCb)"/>
+          <line x1="292" y1="200" x2="560" y2="200" stroke="#ffb547" stroke-width="2.2" marker-end="url(#arrCa)"/>
+          <line x1="290" y1="250" x2="560" y2="320" stroke="#e94f8a" stroke-width="2.2" marker-end="url(#arrCm)"/>
+
+          <!-- facet: net -->
+          <rect x="566" y="46" width="430" height="74" rx="12" fill="rgba(19,44,68,.7)" stroke="#326ce5" stroke-width="1.4"/>
+          <text x="592" y="76" class="svg-mono" fill="#cfe0ff" font-size="14" font-weight="700">net policy</text>
+          <text x="592" y="98" class="svg-label" fill="#8ba2bc" font-size="11.5">tc / XDP enforces allow/deny by identity</text>
+          <text x="978" y="70" text-anchor="end" class="svg-mono" fill="#326ce5" font-size="11" font-weight="700">sets bit</text>
+          <text x="978" y="92" text-anchor="end" class="svg-mono" fill="#326ce5" font-size="11.5" font-weight="700">PRISM_FLAG_NET_POLICY</text>
+
+          <!-- facet: sched -->
+          <rect x="566" y="163" width="430" height="74" rx="12" fill="rgba(19,44,68,.7)" stroke="#ffb547" stroke-width="1.4"/>
+          <text x="592" y="193" class="svg-mono" fill="#ffd9a0" font-size="14" font-weight="700">sched_ext</text>
+          <text x="592" y="215" class="svg-label" fill="#8ba2bc" font-size="11.5">scheduler places work by identity (kernel 6.12)</text>
+          <text x="978" y="187" text-anchor="end" class="svg-mono" fill="#ffb547" font-size="11" font-weight="700">sets bit</text>
+          <text x="978" y="209" text-anchor="end" class="svg-mono" fill="#ffb547" font-size="11.5" font-weight="700">PRISM_FLAG_SCHED_MANAGED</text>
+
+          <!-- facet: observe -->
+          <rect x="566" y="280" width="430" height="74" rx="12" fill="rgba(19,44,68,.7)" stroke="#e94f8a" stroke-width="1.4"/>
+          <text x="592" y="310" class="svg-mono" fill="#f6b7d0" font-size="14" font-weight="700">tracing / observe</text>
+          <text x="592" y="332" class="svg-label" fill="#8ba2bc" font-size="11.5">attributes events to identity for telemetry</text>
+          <text x="978" y="304" text-anchor="end" class="svg-mono" fill="#e94f8a" font-size="11" font-weight="700">sets bit</text>
+          <text x="978" y="326" text-anchor="end" class="svg-mono" fill="#e94f8a" font-size="11.5" font-weight="700">PRISM_FLAG_OBSERVED</text>
+
+          <!-- composability note -->
+          <text x="200" y="330" text-anchor="middle" class="svg-label" fill="#8ba2bc" font-size="12">each consumer owns</text>
+          <text x="200" y="348" text-anchor="middle" class="svg-label" fill="#8ba2bc" font-size="12">exactly one facet flag</text>
+        </svg>
+        <figcaption>
+          <div class="th">identity เดียวรองรับได้พร้อมกันสามด้าน: เครือข่าย / การจัดคิว / การสังเกต — แต่ละด้านเปิดบิตแฟล็กของตัวเอง.</div>
+          <div class="en">A single identity serves all three facets at once — network, scheduling, observe — each toggling its own flag bit. That is the composability claim.</div>
+        </figcaption>
+      </figure>
+      <div class="legend">
+        <span><i style="background:#00d68f"></i> identity value</span>
+        <span><i style="background:#326ce5"></i> NET_POLICY</span>
+        <span><i style="background:#ffb547"></i> SCHED_MANAGED</span>
+        <span><i style="background:#e94f8a"></i> OBSERVED</span>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    Prism — Workload Identity Bus &middot; control-plane resolution <span class="mono">~13 ns</span>,
+    propagation <span class="mono">~0.7 µs</span> &middot; key = pod <span class="mono">cgroup-id</span>
+    (<span class="mono">bpf_get_current_ancestor_cgroup_id</span>) &middot; prototype on Linux 5.15 (sim sink),
+    sched_ext targets kernel 6.12.
+  </footer>
+
+</div>
+</body>
+</html>

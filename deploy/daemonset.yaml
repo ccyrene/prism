@@ -1,0 +1,167 @@
+# prismd DaemonSet: one Pod per node, each scoped to its own node's Pods.
+#
+# What each Pod does on a real 6.12+ host:
+#   1. Reads NODE_NAME (downward API) and passes it as -node so the informer
+#      only acts on Pods scheduled to this node.
+#   2. With -keyer=cgroup, stats each Pod's cgroup-v2 directory under
+#      /sys/fs/cgroup to derive the cgroup inode == the kernel's cgroup id
+#      (real-kernel parity), which is the bus key.
+#   3. Creates + pins the BPF map prism_identity under /sys/fs/bpf/prism/ and
+#      writes one identity per workload. Any BPF consumer (sched_ext, tc/XDP,
+#      observer) reads the same pinned map. That shared map IS the bus.
+#
+# On a host without bpffs / CAP_BPF (e.g. older kernels) the Go sink factory
+# logs the reason and falls back to a userspace sim sink, so the Pod still runs.
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: prismd
+  namespace: prism-system
+  labels:
+    app.kubernetes.io/name: prism
+    app.kubernetes.io/component: daemon
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: prism
+      app.kubernetes.io/component: daemon
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: prism
+        app.kubernetes.io/component: daemon
+      annotations:
+        # Prometheus scrape (works with the annotation-based discovery many
+        # setups use; a ServiceMonitor/PodMonitor is the alternative).
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9464"
+        prometheus.io/path: "/metrics"
+    spec:
+      serviceAccountName: prismd
+      # hostPID is NOT required: prismd derives identity from the Pod cgroup
+      # tree on disk and from the Kubernetes API, not from host process state.
+      #
+      # Run on every node, including control-plane / master nodes, so identity
+      # is propagated cluster-wide. These tolerations cover the standard taints.
+      tolerations:
+        - operator: Exists # tolerate everything: prismd belongs on all nodes
+        # Equivalent explicit form (uncomment instead of the catch-all above):
+        # - key: node-role.kubernetes.io/control-plane
+        #   operator: Exists
+        #   effect: NoSchedule
+        # - key: node-role.kubernetes.io/master
+        #   operator: Exists
+        #   effect: NoSchedule
+      containers:
+        - name: prismd
+          # Built locally and loaded onto the node (see deploy/README.md and
+          # scripts/run-kind.sh). imagePullPolicy: IfNotPresent so kind/minikube
+          # use the pre-loaded image instead of trying to pull from a registry.
+          image: prism/prismd:dev
+          imagePullPolicy: IfNotPresent
+          # Args MUST match the prismd flag contract exactly:
+          #   -keyer=cgroup  -> real-kernel parity (inode of pod cgroup dir)
+          #   -node=$(NODE_NAME) -> scope informer to this node's Pods
+          # ($(NODE_NAME) is expanded by the kubelet from the env var below.)
+          # -bpf defaults true, so the kernel BPF sink is preferred with an
+          # automatic sim fallback; no need to pass it explicitly.
+          args:
+            - "-keyer=cgroup"
+            - "-node=$(NODE_NAME)"
+            - "-metrics-addr=:9464"
+          ports:
+            - name: metrics
+              containerPort: 9464
+              protocol: TCP
+          env:
+            # Downward API: the node this Pod landed on. prismd also reads
+            # $NODE_NAME directly as the default for -node, but we pass it via
+            # args for an explicit, auditable command line.
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            # Keep prismd lean: a soft heap cap (just under the 128Mi limit) so
+            # the Go GC reclaims aggressively before the kernel OOM-kills, and a
+            # tighter GOGC trades a little CPU for ~12% lower RSS. prismd's own
+            # data is ~320 B/identity (a node's ~256 pods ≈ 82 KB); the rest is
+            # the Go/client-go runtime, which these knobs keep returned to the OS.
+            - name: GOMEMLIMIT
+              value: "112MiB"
+            - name: GOGC
+              value: "50"
+          # ---------------------------------------------------------------
+          # SECURITY CONTEXT — two options. Pick ONE.
+          #
+          # OPTION A (default here): privileged. Simplest; guarantees the Pod
+          # can mmap bpffs, create BPF maps, and read every Pod's cgroup dir.
+          securityContext:
+            privileged: true
+          #
+          # OPTION B (least privilege): drop privileged and grant only the
+          # capabilities the BPF sink + cgroup stat path actually need. Comment
+          # out OPTION A above and uncomment this block. Note: on some kernels
+          # you also need to relax the seccomp/AppArmor profile for bpf().
+          # securityContext:
+          #   privileged: false
+          #   readOnlyRootFilesystem: true
+          #   capabilities:
+          #     drop: ["ALL"]
+          #     add:
+          #       - "BPF"          # bpf() syscall: create/pin the map (>=5.8)
+          #       - "SYS_ADMIN"    # bpffs ops on kernels lacking fine-grained CAP_BPF
+          #       - "SYS_RESOURCE"  # raise RLIMIT_MEMLOCK for older kernels
+          # ---------------------------------------------------------------
+          volumeMounts:
+            # Read-only view of the host cgroup-v2 tree so the cgroup keyer can
+            # stat pod cgroup directories to get their inode == cgroup id.
+            - name: cgroup
+              mountPath: /sys/fs/cgroup
+              readOnly: true
+            # bpffs, read-write. Bidirectional propagation so the map this Pod
+            # pins under /sys/fs/bpf/prism/ is visible to other consumers on the
+            # host (and survives in the shared host bpffs mount namespace).
+            - name: bpffs
+              mountPath: /sys/fs/bpf
+              mountPropagation: Bidirectional
+          # Modest resources: prismd is an event-driven informer + map writer.
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              cpu: 100m
+              memory: 128Mi
+          # Health via prismd's built-in HTTP server (works with the distroless
+          # image — no shell needed). /healthz = process up; /readyz = informer
+          # cache synced (we're actually propagating identities).
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: metrics
+            initialDelaySeconds: 3
+            periodSeconds: 10
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: metrics
+            initialDelaySeconds: 2
+            periodSeconds: 5
+            failureThreshold: 3
+      volumes:
+        - name: cgroup
+          hostPath:
+            path: /sys/fs/cgroup
+            type: Directory
+        - name: bpffs
+          hostPath:
+            # bpffs is conventionally mounted at /sys/fs/bpf on the host. The
+            # daemon pins its map at /sys/fs/bpf/prism/identity (map name
+            # prism_identity); the prism/ subdir is created by the daemon.
+            path: /sys/fs/bpf
+            type: Directory
+  updateStrategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1

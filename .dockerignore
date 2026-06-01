@@ -1,0 +1,41 @@
+# Keep the Docker build context small and the image clean. The builder only
+# needs the Go module + sources; everything below is irrelevant to the binary
+# and would only bust the cache or bloat the context.
+
+# VCS / editor
+.git
+.gitignore
+.github
+*.swp
+*~
+.idea
+.vscode
+
+# Docs, reports, generated artifacts (the daemon doesn't need any of these)
+*.md
+report.html
+REPORT.md
+bench/results/
+
+# BPF artifacts: compiled separately (see scripts/build.sh) and loaded from the
+# host, not from the image. vmlinux.h alone is ~3 MB of build context.
+bpf/vmlinux.h
+*.o
+*.bpf.o
+
+# Local build outputs / scratch
+/prismd
+prismd
+*.test
+*.out
+*.log
+dist/
+bin/
+
+# Don't recurse into the build helper scripts' temp dirs
+tmp/
+.tmp/
+
+# This file and the Dockerfile itself
+.dockerignore
+Dockerfile

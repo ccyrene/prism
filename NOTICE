@@ -1,0 +1,50 @@
+Prism — workload-identity bus for Kubernetes-aware eBPF subsystems
+Copyright (c) 2024-2026 The Prism authors.
+
+This product includes software developed as an original work by the Prism
+authors, licensed as described in LICENSE (Apache-2.0 for userspace) and
+bpf/LICENSE (GPL-2.0 for the in-kernel eBPF programs). See each source file's
+SPDX-License-Identifier header for its authoritative per-file license.
+
+================================================================================
+Third-party software and derivations
+================================================================================
+
+1. scx_bpfland  (sched_ext/scx)  —  GPL-2.0
+   https://github.com/sched-ext/scx
+   Copyright (c) 2024 Andrea Righi <andrea.righi@linux.dev>
+
+   The files under integrations/bpfland/ are a DERIVATIVE WORK of scx_bpfland:
+     - integrations/bpfland/main.bpf.c.orig  is the unmodified upstream
+       scx_bpfland BPF scheduler source (the eval's vanilla baseline).
+     - integrations/bpfland/main.bpf.c       is that source plus the Prism
+       identity-bus retrofit (a read of the shared prism_identity map mapped to
+       bpfland's own deadline knob as a one-sided priority floor).
+     - integrations/bpfland/main.bpf.c.replace is an earlier ablation variant.
+   All three retain the upstream GPL-2.0 license and Andrea Righi's copyright
+   header, as required for a GPL-2.0 derivative. The Prism additions are
+   contributed under GPL-2.0.
+
+2. sched_ext / scx tooling  —  GPL-2.0
+   https://github.com/sched-ext/scx  (pinned at v1.1.0 for the 6.17 build)
+   bpf/scx_prism.bpf.c is an original Prism sched_ext scheduler written against
+   the scx BPF API; it is GPL-2.0 (it uses GPL-only kernel helpers and declares
+   SEC("license") = "GPL").
+
+3. libbpf  —  LGPL-2.1 OR BSD-2-Clause
+   https://github.com/libbpf/libbpf
+   bpf/include/bpf/ contains a MINIMAL LOCAL SHIM of a few libbpf macro/helper
+   prototypes, used only to let the BPF objects compile on a host without
+   libbpf-dev. On any host with libbpf-dev the real system headers are used
+   instead. The shim reimplements (does not copy) the small subset of the libbpf
+   API that the Prism BPF programs include.
+
+4. iovisor/bcc execsnoop (libbpf-tools)  —  Apache-2.0 / GPL-2.0
+   https://github.com/iovisor/bcc
+   bpf/consumers/execsnoop_prism.bpf.c follows the structure of the well-known
+   execsnoop tracer (two execve tracepoints, per-pid stash, perf-event output)
+   and adds the Prism identity read; it is GPL-2.0.
+
+The Kubernetes client (k8s.io/client-go) and the eBPF Go library (cilium/ebpf)
+are used as ordinary Go module dependencies under their own licenses; see go.mod
+and the module cache for the authoritative texts.

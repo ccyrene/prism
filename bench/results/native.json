@@ -1,0 +1,1 @@
+{"prism_ns": 3.597, "baseline_ns": 541.712, "ratio": 150.58, "prism_p99_ns": 3, "baseline_p99_ns": 671, "note": "standalone userspace C, clang -O2; proxy for the in-kernel BPF-map hot path"}

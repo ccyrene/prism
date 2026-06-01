@@ -1,0 +1,8 @@
+[
+  { "name": "fast",
+    "matches": [[{ "CgroupPrefix": "prism_probe" }]],
+    "kind": { "Open": { "preempt": true, "preempt_first": true, "slice_us": 20000, "growth_algo": "Linear" } } },
+  { "name": "rest",
+    "matches": [[]],
+    "kind": { "Open": { "growth_algo": "Linear" } } }
+]

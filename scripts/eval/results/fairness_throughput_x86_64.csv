@@ -1,0 +1,7 @@
+scheduler,lane,bogo_ops_per_s
+baseline,HIGH,3729
+baseline,NORM,3770
+scx_prism,HIGH,7622
+scx_prism,NORM,595
+scx_prism_fair,HIGH,7598
+scx_prism_fair,NORM,711

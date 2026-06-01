@@ -1,0 +1,222 @@
+#cloud-config
+# cloud-init.yaml — first-boot provisioning for a fresh sched_ext-capable cloud
+# VM, equivalent to scripts/provision-schedext-vm.sh.
+#
+# Use this when spinning a cloud instance to run the REAL Prism sched_ext
+# scheduler. Pick an image whose kernel is >= 6.12 with CONFIG_SCHED_CLASS_EXT:
+#
+#   * Ubuntu 25.04 "plucky" (kernel 6.14, sched_ext enabled) — apt path below.
+#   * Fedora 41+/42         (sched_ext enabled)              — see the dnf notes
+#                                                              in the runcmd.
+#
+# Cross-ISA (the point of the cross-ISA eval): this config is arch-neutral. Boot
+# it on either —
+#   * x86_64:  e.g. AWS c7i / m7i, GCP c4, Azure Dv6   (Ubuntu 25.04 amd64 image)
+#   * aarch64: e.g. AWS Graviton c7g/m7g, GCP c4a, Azure Dpsv6 (Ubuntu 25.04 arm64 image)
+# The setup script auto-detects uname -m and sets the clang -D__TARGET_ARCH_*
+# define accordingly. Use the matching arch image for your instance type.
+#
+# This config:
+#   - installs build deps (clang/llvm, libbpf-dev, bpftool/linux-tools, make,
+#     go, git, meson/ninja, cargo) via apt,
+#   - mounts bpffs at /sys/fs/bpf (and makes it persistent via fstab),
+#   - clones the Prism repo and the sched-ext/scx toolchain,
+#   - writes /usr/local/sbin/prism-setup.sh, which generates vmlinux.h from the
+#     booted kernel's BTF, builds the scx headers/loader, compiles
+#     compose_demo.bpf.o + scx_prism.bpf.o, and builds prismd,
+#   - runs that script once on first boot and logs to /var/log/prism-setup.log.
+#
+# It deliberately does NOT auto-load the scheduler or start prismd — loading a
+# system-wide scheduler is an explicit, privileged action. Read the log, then
+# follow the "Next steps" it prints (mirrors provision-schedext-vm.sh step 9).
+#
+# Override defaults via cloud-init: edit PRISM_REPO_URL / PRISM_REF / SCX_REF in
+# the write_files block below before launch.
+
+package_update: true
+package_upgrade: false
+
+# Provision the toolchain. (On Fedora these names differ — see the runcmd note;
+# the setup script itself is distro-aware, this list is the Ubuntu/Debian set.)
+packages:
+  - clang
+  - llvm
+  - lld
+  - libelf-dev
+  - zlib1g-dev
+  - pkg-config
+  - libbpf-dev
+  - make
+  - gcc
+  - git
+  - ca-certificates
+  - curl
+  - linux-tools-common
+  - linux-tools-generic
+  - golang-go
+  - meson
+  - ninja-build
+  - cargo
+  - rustc
+
+# Mount bpffs now and persist it. The Prism map pins under /sys/fs/bpf/prism/.
+mounts:
+  - [ bpffs, /sys/fs/bpf, bpf, "defaults", "0", "0" ]
+
+write_files:
+  # The setup script run once on first boot. It mirrors
+  # provision-schedext-vm.sh but assumes deps are already installed by the
+  # `packages:` block above; it is still idempotent and safe to re-run by hand.
+  - path: /usr/local/sbin/prism-setup.sh
+    permissions: '0755'
+    owner: root:root
+    content: |
+      #!/usr/bin/env bash
+      set -euo pipefail
+
+      # ---- tunables (edit before launch, or export before manual re-run) -----
+      PRISM_REPO_URL="${PRISM_REPO_URL:-https://github.com/prism-bus/prism}"
+      PRISM_REF="${PRISM_REF:-main}"
+      PRISM_DIR="${PRISM_DIR:-/opt/prism}"
+      SCX_DIR="${SCX_DIR:-/opt/scx}"
+      SCX_REF="${SCX_REF:-main}"
+
+      log() { echo "[prism-setup] $*"; }
+
+      ARCH="$(uname -m)"
+      case "${ARCH}" in
+        x86_64|amd64)  BPF_ARCH_DEF="-D__TARGET_ARCH_x86" ;;
+        aarch64|arm64) BPF_ARCH_DEF="-D__TARGET_ARCH_arm64" ;;
+        *) echo "unsupported arch ${ARCH}"; exit 1 ;;
+      esac
+      KREL="$(uname -r)"
+      log "arch=${ARCH} kernel=${KREL} clang ${BPF_ARCH_DEF}"
+
+      # ---- verify sched_ext on the booted kernel -----------------------------
+      if [[ -d /sys/kernel/sched_ext ]]; then
+        log "OK: /sys/kernel/sched_ext present (sched_ext is live)"
+      else
+        log "WARN: /sys/kernel/sched_ext missing — this image's kernel lacks sched_ext."
+        log "      scx_prism can be compiled iff the BTF has the types, but it will NOT load."
+        log "      Use an Ubuntu 25.04 / Fedora 41+ (6.12+) image."
+      fi
+
+      # ---- bpffs (cloud-init `mounts:` already did this; belt and braces) ----
+      if ! grep -qE '\s/sys/fs/bpf\s+bpf\s' /proc/mounts; then
+        mkdir -p /sys/fs/bpf
+        mount -t bpf bpf /sys/fs/bpf
+      fi
+      mkdir -p /sys/fs/bpf/prism
+      log "bpffs ready; pin dir /sys/fs/bpf/prism"
+
+      # ---- locate a working bpftool ------------------------------------------
+      BPFTOOL=""
+      if command -v bpftool >/dev/null 2>&1 && bpftool version >/dev/null 2>&1; then
+        BPFTOOL="bpftool"
+      else
+        for c in "/usr/lib/linux-tools-${KREL}/bpftool" /usr/lib/linux-tools-*/bpftool /usr/sbin/bpftool; do
+          if [[ -x "${c}" ]] && "${c}" version >/dev/null 2>&1; then BPFTOOL="${c}"; break; fi
+        done
+      fi
+      [[ -n "${BPFTOOL}" ]] || { echo "no working bpftool"; exit 1; }
+      log "bpftool: ${BPFTOOL}"
+
+      # ---- clone the Prism repo ----------------------------------------------
+      if [[ ! -d "${PRISM_DIR}/.git" ]]; then
+        log "cloning Prism: ${PRISM_REPO_URL} (ref ${PRISM_REF})"
+        git clone --depth 1 --branch "${PRISM_REF}" "${PRISM_REPO_URL}" "${PRISM_DIR}" \
+          || git clone --depth 1 "${PRISM_REPO_URL}" "${PRISM_DIR}"
+      fi
+      BPF_DIR="${PRISM_DIR}/bpf"
+      [[ -d "${BPF_DIR}" ]] || { echo "no bpf dir at ${BPF_DIR}"; exit 1; }
+
+      # ---- clone + build scx toolchain ---------------------------------------
+      if [[ ! -d "${SCX_DIR}/.git" ]]; then
+        log "cloning sched-ext/scx (ref ${SCX_REF})"
+        git clone --depth 1 --branch "${SCX_REF}" https://github.com/sched-ext/scx "${SCX_DIR}" \
+          || git clone --depth 1 https://github.com/sched-ext/scx "${SCX_DIR}"
+      fi
+      SCX_INC=""
+      for cand in "${SCX_DIR}/scheds/include" "${SCX_DIR}/scheds/c/include" "${SCX_DIR}/include"; do
+        if [[ -f "${cand}/scx/common.bpf.h" ]]; then SCX_INC="${cand}"; break; fi
+      done
+      if [[ -z "${SCX_INC}" ]]; then
+        found="$(find "${SCX_DIR}" -type f -name common.bpf.h -path '*/scx/*' 2>/dev/null | head -1 || true)"
+        [[ -n "${found}" ]] && SCX_INC="$(dirname "$(dirname "${found}")")"
+      fi
+      [[ -n "${SCX_INC}" ]] || { echo "scx/common.bpf.h not found under ${SCX_DIR}"; exit 1; }
+      log "scx headers: ${SCX_INC}"
+
+      if command -v meson >/dev/null 2>&1 && command -v ninja >/dev/null 2>&1; then
+        ( cd "${SCX_DIR}" && [[ -d build ]] || meson setup build ) || log "WARN: meson setup failed; headers only"
+        ( cd "${SCX_DIR}" && [[ -d build ]] && meson compile -C build ) || log "WARN: scx build failed; headers only"
+      fi
+
+      # ---- regenerate vmlinux.h from the booted kernel's BTF ------------------
+      if [[ ! -r /sys/kernel/btf/vmlinux ]]; then
+        echo "no /sys/kernel/btf/vmlinux (kernel lacks BTF)"; exit 1;
+      fi
+      "${BPFTOOL}" btf dump file /sys/kernel/btf/vmlinux format c > "${BPF_DIR}/vmlinux.h.tmp"
+      if grep -q 'struct sched_ext_ops' "${BPF_DIR}/vmlinux.h.tmp"; then
+        mv -f "${BPF_DIR}/vmlinux.h.tmp" "${BPF_DIR}/vmlinux.h"
+        log "vmlinux.h regenerated with sched_ext types"
+      else
+        rm -f "${BPF_DIR}/vmlinux.h.tmp"
+        log "WARN: BTF lacks sched_ext types; keeping shipped vmlinux.h (scx_prism will not compile here)"
+      fi
+
+      # ---- compile BPF objects -----------------------------------------------
+      log "compiling compose_demo.bpf.o"
+      clang -O2 -g -target bpf ${BPF_ARCH_DEF} -I"${BPF_DIR}" \
+        -c "${BPF_DIR}/compose_demo.bpf.c" -o "${BPF_DIR}/compose_demo.bpf.o"
+
+      if grep -q 'struct sched_ext_ops' "${BPF_DIR}/vmlinux.h" 2>/dev/null; then
+        log "compiling scx_prism.bpf.o"
+        clang -O2 -g -target bpf ${BPF_ARCH_DEF} -I"${BPF_DIR}" -I"${SCX_INC}" \
+          -c "${BPF_DIR}/scx_prism.bpf.c" -o "${BPF_DIR}/scx_prism.bpf.o"
+      else
+        log "WARN: skipping scx_prism.bpf.o (no sched_ext types in BTF)"
+      fi
+
+      # ---- build prismd ------------------------------------------------------
+      if command -v go >/dev/null 2>&1; then
+        log "building prismd"
+        ( cd "${PRISM_DIR}" && CGO_ENABLED=0 GOFLAGS=-mod=mod go build -o "${PRISM_DIR}/prismd" ./cmd/prismd )
+      else
+        log "WARN: go missing; skipped prismd build"
+      fi
+
+      # ---- next steps --------------------------------------------------------
+      cat <<NEXT
+      ============================================================
+      Prism provisioning complete on ${ARCH} (kernel ${KREL}).
+      The bus is the pinned map /sys/fs/bpf/prism/prism_identity.
+
+      1) Start the identity producer (creates+pins the map):
+           sudo NODE_NAME=\$(hostname) ${PRISM_DIR}/prismd \\
+                -bpf=true -keyer=cgroup -cgroup-driver=systemd \\
+                -kubeconfig=/root/.kube/config     # or in-cluster
+         Check: sudo ${BPFTOOL} map show name prism_identity
+
+      2) Load the identity-aware scheduler (opens the SAME map):
+           sudo ${BPFTOOL} struct_ops register ${BPF_DIR}/scx_prism.bpf.o \\
+                /sys/fs/bpf/prism/scx_prism_ops
+         Check: cat /sys/kernel/sched_ext/state    # -> enabled
+         Stop:  sudo rm /sys/fs/bpf/prism/scx_prism_ops
+         (Or use scx_loader from ${SCX_DIR}; see ${SCX_DIR}/README.md.)
+
+      3) Watch the shared bus: sudo ${BPFTOOL} map dump name prism_identity
+         (scx_prism stamps PRISM_FLAG_SCHED_MANAGED on managed identities.)
+      ============================================================
+      NEXT
+      log "done"
+
+runcmd:
+  # Fedora note: this cloud-config's `packages:` list is Ubuntu/Debian. On a
+  # Fedora 41+ image, replace it with: clang llvm lld llvm-tools
+  # elfutils-libelf-devel zlib-devel pkgconf-pkg-config libbpf libbpf-devel
+  # bpftool make gcc git golang meson ninja-build cargo rust  (dnf install -y).
+  # The setup script below is distro-agnostic for the build steps.
+  - [ bash, -lc, "/usr/local/sbin/prism-setup.sh 2>&1 | tee /var/log/prism-setup.log" ]
+
+final_message: "Prism sched_ext provisioning finished after $UPTIME s. See /var/log/prism-setup.log and follow the printed next-steps to load scx_prism."

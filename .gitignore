@@ -1,0 +1,52 @@
+# ---- Compiled binaries / build outputs (reproducible via scripts/build.sh,
+#      loader/Makefile, integrations/bpfland/build.sh) ----
+/prismd
+prismd
+/dist/
+/bin/
+loader/scx_prism_loader
+integrations/bpfland/latjit
+*.test
+
+# ---- BPF objects (rebuilt from the .bpf.c sources) ----
+*.o
+*.bpf.o
+
+# ---- Python caches ----
+__pycache__/
+*.pyc
+
+# ---- Editor / OS ----
+*.swp
+*~
+.idea/
+.vscode/
+.DS_Store
+
+# ---- LaTeX build cruft (keep paper/prism.tex, refs.bib, figs/, prism.pdf) ----
+
+# ---- Backups / scratch / logs ----
+# NOTE: do NOT ignore *.orig / *.replace — integrations/bpfland/main.bpf.c.orig is
+# the stock-bpfland source build.sh compiles the vanilla leg from (the honesty
+# guard), and main.bpf.c.replace is the documented ablation cited in FACTS.md.
+*.bak
+*.log
+.*.log
+
+# ---- Internal session/handoff/planning/budget docs — never publish ----
+# (kept on disk for local continuity; excluded from the public history.)
+HANDOFF.md
+HANDOFF_NEXT.md
+NEXT_PHASE.md
+REPORT.md
+report.html
+*.tgz
+*.tar.gz
+
+# ---- Regenerable figure copies (canonical figs live in paper/figs/; these are
+#      regenerated from the *.csv/*.json via bench/plot.py) ----
+bench/results/*.png
+scripts/eval/results/*.png
+
+# ---- Research paper kept private (not part of the public code release) ----
+/paper/

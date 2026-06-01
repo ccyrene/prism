@@ -1,0 +1,142 @@
+{
+  "host": {
+    "cpu": "AMD Ryzen 7 5800H with Radeon Graphics",
+    "go_version": "go1.24.0",
+    "goarch": "amd64",
+    "gomaxprocs": "16",
+    "goos": "linux",
+    "kernel": "5.15.167.4-microsoft-standard-WSL2"
+  },
+  "method": {
+    "ci": "percentile bootstrap, 2000 resamples, 95% on median",
+    "measured_trials": 60,
+    "note": "trial-level distribution (per-op timing is below clock resolution at the Prism end, so we time batches and report the trial distribution)",
+    "timing": "single-goroutine ns/op per trial; GC before each trial; CLOCK via time.Now monotonic",
+    "warmup_trials": 8
+  },
+  "scenarios": [
+    {
+      "scenario": "resolution_prism",
+      "unit": "ns/op",
+      "n_trials": 60,
+      "mean": 12.788582416666667,
+      "p50": 12.71181,
+      "p90": 13.513338000000001,
+      "p99": 14.25701285,
+      "p99_9": 14.369523785000002,
+      "min": 11.84394,
+      "max": 14.382025,
+      "stddev": 0.6117427689968296,
+      "cov": 0.04783507265039621,
+      "ci95_low": 12.53935,
+      "ci95_high": 12.90581
+    },
+    {
+      "scenario": "resolution_baseline",
+      "unit": "ns/op",
+      "n_trials": 60,
+      "mean": 462.1329204166667,
+      "p50": 460.10644,
+      "p90": 473.6384695,
+      "p99": 515.1962441499999,
+      "p99_9": 524.2613779150001,
+      "min": 444.860675,
+      "max": 525.268615,
+      "stddev": 14.633685180529376,
+      "cov": 0.03166553286733047,
+      "ci95_low": 456.571975,
+      "ci95_high": 463.60294
+    },
+    {
+      "scenario": "alloc_cold",
+      "unit": "ns/op",
+      "n_trials": 60,
+      "mean": 150.77354799999998,
+      "p50": 146.26189,
+      "p90": 168.611252,
+      "p99": 199.4944655999999,
+      "p99_9": 218.25796656000034,
+      "min": 124.89978,
+      "max": 220.3428,
+      "stddev": 16.950910328689048,
+      "cov": 0.11242628798978088,
+      "ci95_low": 142.65548,
+      "ci95_high": 153.82837999999998
+    },
+    {
+      "scenario": "alloc_dedup",
+      "unit": "ns/op",
+      "n_trials": 60,
+      "mean": 46.64734366666666,
+      "p50": 43.58851,
+      "p90": 53.839400000000005,
+      "p99": 94.73286999999982,
+      "p99_9": 121.68271300000048,
+      "min": 38.8607,
+      "max": 124.67714,
+      "stddev": 11.744502171391668,
+      "cov": 0.25177215352959265,
+      "ci95_low": 42.7168,
+      "ci95_high": 45.431920000000005
+    },
+    {
+      "scenario": "e2e_pod_add",
+      "unit": "ns/op",
+      "n_trials": 60,
+      "mean": 711.6879875,
+      "p50": 699.748075,
+      "p90": 818.216265,
+      "p99": 920.896787,
+      "p99_9": 923.6636687,
+      "min": 587.60825,
+      "max": 923.9711,
+      "stddev": 82.33040176026614,
+      "cov": 0.11568328144679574,
+      "ci95_low": 671.78685,
+      "ci95_high": 717.7563
+    },
+    {
+      "scenario": "churn_add_delete",
+      "unit": "ns/op",
+      "n_trials": 60,
+      "mean": 555.4188716666667,
+      "p50": 543.0349249999999,
+      "p90": 610.58138,
+      "p99": 717.4695695,
+      "p99_9": 722.4020019500002,
+      "min": 501.11525,
+      "max": 722.95005,
+      "stddev": 47.669534690849986,
+      "cov": 0.08582627836862328,
+      "ci95_low": 531.7279,
+      "ci95_high": 556.268775
+    }
+  ],
+  "scale": [
+    {
+      "live_identities": 1000,
+      "alloc_ns_per_op": 229.968,
+      "lookup_ns_per_op": 11.021282,
+      "baseline_ns_per_op": 444.285564
+    },
+    {
+      "live_identities": 10000,
+      "alloc_ns_per_op": 331.1017,
+      "lookup_ns_per_op": 16.993986,
+      "baseline_ns_per_op": 438.590856
+    },
+    {
+      "live_identities": 100000,
+      "alloc_ns_per_op": 594.14237,
+      "lookup_ns_per_op": 38.92128,
+      "baseline_ns_per_op": 455.896982
+    },
+    {
+      "live_identities": 1000000,
+      "alloc_ns_per_op": 1077.640993,
+      "lookup_ns_per_op": 91.024752,
+      "baseline_ns_per_op": 476.82693
+    }
+  ],
+  "resolution_ratio_median": 36.19519486210068
+}

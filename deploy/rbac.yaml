@@ -1,0 +1,49 @@
+# RBAC for prismd.
+#
+# prismd runs a shared informer over Pods to learn which workloads live on its
+# node, then writes a stable numeric identity into the shared BPF map. The ONLY
+# Kubernetes API access it needs is read access to Pods, cluster-wide (the
+# DaemonSet filters to its own node in-process via the -node flag / field
+# selector, but Pods are a namespaced resource the controller lists/watches
+# across namespaces, so a ClusterRole is the correct scope).
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: prismd
+  namespace: prism-system
+  labels:
+    app.kubernetes.io/name: prism
+    app.kubernetes.io/component: daemon
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: prismd
+  labels:
+    app.kubernetes.io/name: prism
+    app.kubernetes.io/component: daemon
+rules:
+  # Watch Pods so the controller's informer stays in sync. get/list/watch is
+  # the minimal verb set for a client-go SharedInformer (list to prime the
+  # cache, watch to stream deltas, get for completeness). No write verbs:
+  # prismd never mutates the cluster.
+  - apiGroups: [""] # core API group
+    resources: ["pods"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: prismd
+  labels:
+    app.kubernetes.io/name: prism
+    app.kubernetes.io/component: daemon
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: prismd
+subjects:
+  - kind: ServiceAccount
+    name: prismd
+    namespace: prism-system

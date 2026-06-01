@@ -5,6 +5,22 @@ find out *which Kubernetes workload* a task / packet / event belongs to, then
 acts on it. Prism is designed for this: bring your own program, on your own
 attach point, with your own state — the bus is an ABI, not a closed app.
 
+## The Prism-specific part is 3 lines
+
+Everything else on this page is the same build / load / attach that *any* eBPF
+program needs. The only code Prism adds to **your** program is:
+
+```c
+#include "prism_maps.bpf.h"   // 1. the shared bus map (read-only)
+#include "libprism.bpf.h"     // 2. the reader helpers
+/* ...then inside your program, one O(1) read: */
+__u32 id = prism_id(prism_identity_of_current());   // 3. which workload? (0 = off-bus)
+```
+
+`id` is the stable 24-bit workload identity — branch on it, count by it,
+prioritize by it. You never run a Kubernetes watcher or parse a cgroup path;
+`prismd` already did that once for the whole node.
+
 The two programs here are real, working examples:
 
 | file | type | what it does |

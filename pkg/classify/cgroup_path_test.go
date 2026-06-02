@@ -5,7 +5,7 @@ package classify
 import (
 	"testing"
 
-	"github.com/prism-bus/prism/pkg/identity"
+	"github.com/ccyrene/prism/pkg/identity"
 )
 
 func TestClassifyDefaultRules(t *testing.T) {

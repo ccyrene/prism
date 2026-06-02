@@ -19,8 +19,8 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/fake"
 
-	prismsync "github.com/prism-bus/prism/pkg/sync"
-	"github.com/prism-bus/prism/pkg/sink"
+	prismsync "github.com/ccyrene/prism/pkg/sync"
+	"github.com/ccyrene/prism/pkg/sink"
 )
 
 func pod(name, uid string, labels map[string]string) *corev1.Pod {

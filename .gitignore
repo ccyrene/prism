@@ -1,8 +1,11 @@
 # ---- Compiled binaries / build outputs (reproducible via scripts/build.sh,
 #      loader/Makefile, integrations/bpfland/build.sh) ----
+# NOTE: ignore the built binary as `/prismd` (repo root) only — a bare `prismd`
+# also matches the cmd/prismd/ SOURCE directory and silently drops the daemon
+# from the repo.
 /prismd
-prismd
 /dist/
+dist/prismd
 /bin/
 loader/scx_prism_loader
 integrations/bpfland/latjit

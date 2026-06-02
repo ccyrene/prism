@@ -13,10 +13,10 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/fake"
 
-	"github.com/prism-bus/prism/pkg/abi"
-	"github.com/prism-bus/prism/pkg/key"
-	"github.com/prism-bus/prism/pkg/metrics"
-	"github.com/prism-bus/prism/pkg/sink"
+	"github.com/ccyrene/prism/pkg/abi"
+	"github.com/ccyrene/prism/pkg/key"
+	"github.com/ccyrene/prism/pkg/metrics"
+	"github.com/ccyrene/prism/pkg/sink"
 )
 
 func testPod(name, uid string, labels map[string]string) *corev1.Pod {

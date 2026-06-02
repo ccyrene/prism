@@ -9,9 +9,9 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
-	"github.com/prism-bus/prism/pkg/abi"
-	"github.com/prism-bus/prism/pkg/identity"
-	"github.com/prism-bus/prism/pkg/sink"
+	"github.com/ccyrene/prism/pkg/abi"
+	"github.com/ccyrene/prism/pkg/identity"
+	"github.com/ccyrene/prism/pkg/sink"
 )
 
 // pod is a tiny helper to build a Pod with a UID and label set.

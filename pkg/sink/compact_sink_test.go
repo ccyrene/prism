@@ -6,7 +6,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/prism-bus/prism/pkg/abi"
+	"github.com/ccyrene/prism/pkg/abi"
 )
 
 func TestCompactSinkBasic(t *testing.T) {

@@ -6,7 +6,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/prism-bus/prism/pkg/abi"
+	"github.com/ccyrene/prism/pkg/abi"
 )
 
 // All four sinks implement abi.Sink, including the new Range method. The BPF

@@ -25,8 +25,8 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/fake"
 
-	prismsync "github.com/prism-bus/prism/pkg/sync"
-	"github.com/prism-bus/prism/pkg/sink"
+	prismsync "github.com/ccyrene/prism/pkg/sync"
+	"github.com/ccyrene/prism/pkg/sink"
 )
 
 // bloatedPod builds a Pod close to a real one's in-memory size: managedFields

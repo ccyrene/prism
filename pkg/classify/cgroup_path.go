@@ -28,7 +28,7 @@ package classify
 import (
 	"strings"
 
-	"github.com/prism-bus/prism/pkg/identity"
+	"github.com/ccyrene/prism/pkg/identity"
 )
 
 // PredKind selects how a Predicate's Value is tested against a path segment.

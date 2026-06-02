@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/prism-bus/prism/pkg/abi"
+	"github.com/ccyrene/prism/pkg/abi"
 )
 
 // Policy label keys. An operator sets scheduling policy CENTRALLY on the pod;

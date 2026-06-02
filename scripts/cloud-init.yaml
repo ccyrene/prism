@@ -75,7 +75,7 @@ write_files:
       set -euo pipefail
 
       # ---- tunables (edit before launch, or export before manual re-run) -----
-      PRISM_REPO_URL="${PRISM_REPO_URL:-https://github.com/prism-bus/prism}"
+      PRISM_REPO_URL="${PRISM_REPO_URL:-https://github.com/ccyrene/prism}"
       PRISM_REF="${PRISM_REF:-main}"
       PRISM_DIR="${PRISM_DIR:-/opt/prism}"
       SCX_DIR="${SCX_DIR:-/opt/scx}"

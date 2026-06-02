@@ -17,8 +17,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/prism-bus/prism/pkg/abi"
-	"github.com/prism-bus/prism/pkg/sink"
+	"github.com/ccyrene/prism/pkg/abi"
+	"github.com/ccyrene/prism/pkg/sink"
 )
 
 var sink_ uint64 // anti-DCE

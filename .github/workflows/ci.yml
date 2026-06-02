@@ -1,0 +1,40 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  go:
+    name: build · vet · test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - run: go build ./...
+      - run: go vet ./...
+      - run: go test -race ./...
+
+  bpf:
+    name: compile eBPF consumers
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: install clang
+        run: sudo apt-get update && sudo apt-get install -y clang llvm
+      - name: compile consumers (vmlinux.h + the in-repo libbpf shim)
+        run: |
+          for f in bpf/consumers/net_policy_prism.bpf.c \
+                   bpf/consumers/execsnoop_prism.bpf.c \
+                   bpf/consumers/lsm_policy_prism.bpf.c \
+                   bpf/compose_demo.bpf.c; do
+            echo "== $f =="
+            clang -O2 -g -target bpf -D__TARGET_ARCH_x86 -I bpf -I bpf/include \
+                  -c "$f" -o "/tmp/$(basename "$f" .c).o"
+          done
+      # scx_prism.bpf.c needs the sched-ext/scx headers + a 6.12+ BTF and is built
+      # by scripts/provision-schedext-vm.sh on a real host — not in CI.

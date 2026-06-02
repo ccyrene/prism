@@ -5,7 +5,7 @@ package sink
 import (
 	"sync"
 
-	"github.com/prism-bus/prism/pkg/abi"
+	"github.com/ccyrene/prism/pkg/abi"
 )
 
 // SimSink is a userspace simulation of the pinned BPF identity map: a single

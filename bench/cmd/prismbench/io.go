@@ -8,8 +8,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/prism-bus/prism/pkg/abi"
-	"github.com/prism-bus/prism/pkg/sink"
+	"github.com/ccyrene/prism/pkg/abi"
+	"github.com/ccyrene/prism/pkg/sink"
 )
 
 func newSimSink() (abi.Sink, error) { return sink.NewCompactSink(), nil }

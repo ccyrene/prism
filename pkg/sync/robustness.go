@@ -7,8 +7,8 @@ import (
 	"log"
 	"time"
 
-	"github.com/prism-bus/prism/pkg/abi"
-	"github.com/prism-bus/prism/pkg/identity"
+	"github.com/ccyrene/prism/pkg/abi"
+	"github.com/ccyrene/prism/pkg/identity"
 )
 
 // Reseed rebuilds the allocator's view from a surviving identity map BEFORE the

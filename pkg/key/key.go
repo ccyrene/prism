@@ -27,7 +27,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 
-	"github.com/prism-bus/prism/pkg/abi"
+	"github.com/ccyrene/prism/pkg/abi"
 )
 
 // Keyer maps a Pod to its bus key.

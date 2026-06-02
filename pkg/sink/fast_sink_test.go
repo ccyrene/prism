@@ -5,7 +5,7 @@ package sink
 import (
 	"testing"
 
-	"github.com/prism-bus/prism/pkg/abi"
+	"github.com/ccyrene/prism/pkg/abi"
 )
 
 func TestFastSinkBasic(t *testing.T) {

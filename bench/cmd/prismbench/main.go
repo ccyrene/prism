@@ -23,10 +23,10 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
-	"github.com/prism-bus/prism/pkg/abi"
-	"github.com/prism-bus/prism/pkg/classify"
-	"github.com/prism-bus/prism/pkg/identity"
-	prismsync "github.com/prism-bus/prism/pkg/sync"
+	"github.com/ccyrene/prism/pkg/abi"
+	"github.com/ccyrene/prism/pkg/classify"
+	"github.com/ccyrene/prism/pkg/identity"
+	prismsync "github.com/ccyrene/prism/pkg/sync"
 )
 
 const (

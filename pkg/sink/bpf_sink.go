@@ -11,7 +11,7 @@ import (
 
 	"github.com/cilium/ebpf"
 
-	"github.com/prism-bus/prism/pkg/abi"
+	"github.com/ccyrene/prism/pkg/abi"
 )
 
 // bpfPinDir is the directory component of abi.PinPath. The map is pinned BY NAME

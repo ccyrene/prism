@@ -1,5 +1,7 @@
 # Prism
 
+[![ci](https://github.com/ccyrene/prism/actions/workflows/ci.yml/badge.svg)](https://github.com/ccyrene/prism/actions/workflows/ci.yml)
+
 **A workload-identity bus for Kubernetes-aware eBPF.**
 
 ![Prism architecture: the Kubernetes API feeds prismd, which derives one 24-bit identity per workload and publishes it into a single shared, read-only eBPF map (prism_identity) — the bus — read O(1) by a sched_ext scheduler, a tc/net-policy program, and a tracer.](docs/architecture.png)

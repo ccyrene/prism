@@ -61,7 +61,7 @@ FROM gcr.io/distroless/static:latest
 
 LABEL org.opencontainers.image.title="prismd" \
       org.opencontainers.image.description="Prism Workload Identity Bus sync daemon" \
-      org.opencontainers.image.source="https://github.com/prism-bus/prism"
+      org.opencontainers.image.source="https://github.com/ccyrene/prism"
 
 COPY --from=builder /prismd /prismd
 

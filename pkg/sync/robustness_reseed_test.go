@@ -5,9 +5,9 @@ package prismsync
 import (
 	"testing"
 
-	"github.com/prism-bus/prism/pkg/abi"
-	"github.com/prism-bus/prism/pkg/identity"
-	"github.com/prism-bus/prism/pkg/sink"
+	"github.com/ccyrene/prism/pkg/abi"
+	"github.com/ccyrene/prism/pkg/identity"
+	"github.com/ccyrene/prism/pkg/sink"
 )
 
 // TestReseedReclaimsIdentity proves restart-stability: a workload that survives a

@@ -1,4 +1,4 @@
-module github.com/prism-bus/prism
+module github.com/ccyrene/prism
 
 go 1.24.0
 

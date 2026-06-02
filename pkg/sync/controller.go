@@ -28,10 +28,10 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
 
-	"github.com/prism-bus/prism/pkg/abi"
-	"github.com/prism-bus/prism/pkg/identity"
-	"github.com/prism-bus/prism/pkg/key"
-	"github.com/prism-bus/prism/pkg/metrics"
+	"github.com/ccyrene/prism/pkg/abi"
+	"github.com/ccyrene/prism/pkg/identity"
+	"github.com/ccyrene/prism/pkg/key"
+	"github.com/ccyrene/prism/pkg/metrics"
 )
 
 // EventType names the three Pod lifecycle transitions the controller handles.

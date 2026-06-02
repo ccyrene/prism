@@ -5,7 +5,7 @@ package identity
 import (
 	"testing"
 
-	"github.com/prism-bus/prism/pkg/abi"
+	"github.com/ccyrene/prism/pkg/abi"
 )
 
 func TestDeriveSchedPolicy_Classes(t *testing.T) {

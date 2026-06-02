@@ -16,7 +16,7 @@ package sink
 import (
 	"log"
 
-	"github.com/prism-bus/prism/pkg/abi"
+	"github.com/ccyrene/prism/pkg/abi"
 )
 
 // New returns a Sink. When preferBPF is true it first tries the kernel-backed

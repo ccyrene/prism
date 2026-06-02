@@ -2,7 +2,7 @@
 
 **A workload-identity bus for Kubernetes-aware eBPF.**
 
-![Prism architecture: the Kubernetes API feeds prismd, which derives one 24-bit identity per workload and publishes it into a single shared, read-only eBPF map (prism_identity) — the bus — read O(1) by a sched_ext scheduler, a tc/net-policy program, and a tracer.](docs/architecture.svg)
+![Prism architecture: the Kubernetes API feeds prismd, which derives one 24-bit identity per workload and publishes it into a single shared, read-only eBPF map (prism_identity) — the bus — read O(1) by a sched_ext scheduler, a tc/net-policy program, and a tracer.](docs/architecture.png)
 
 > `prismd` derives one 24-bit identity per workload and writes it into a single
 > read-only eBPF map; **any number** of in-kernel consumers — `sched`, `net`,

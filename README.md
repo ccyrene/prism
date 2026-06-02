@@ -58,6 +58,12 @@ frozen ABI shared byte-for-byte by Go and C — see `spec/README.md`. A consumer
 own counters can be surfaced to Prometheus with a small exporter, e.g.
 `cmd/prism-net-exporter` (`prism_net_bytes_total{identity="…"}`).
 
+**Composability** — one identity carries a per-subsystem **facet bit** in its
+`flags`, so a consumer can ask "is this workload net-policy'd *and*
+scheduler-managed?" by reading a flag, and a new subsystem just claims a reserved bit:
+
+![One identity, many facets: net / sched / observe each own a flag bit in the one shared identity, with ~19 bits reserved for new subsystems.](docs/facets.png)
+
 ## Docs
 
 - [`docs/QUICKSTART.md`](docs/QUICKSTART.md) — use Prism in 3 steps

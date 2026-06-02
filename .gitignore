@@ -42,9 +42,12 @@ HANDOFF.md
 HANDOFF_NEXT.md
 NEXT_PHASE.md
 REPORT.md
-report.html
 *.tgz
 *.tar.gz
+
+# ---- Generated / exported HTML (report.html, docs/architecture.html, …) ----
+#      Regenerated from sources; not part of the tracked tree.
+*.html
 
 # ---- Regenerable figure copies (canonical figs live in paper/figs/; these are
 #      regenerated from the *.csv/*.json via bench/plot.py) ----

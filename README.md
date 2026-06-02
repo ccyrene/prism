@@ -40,6 +40,7 @@ sudo ./loader/scx_prism_loader bpf/scx_prism.bpf.o
 sudo scripts/three-leg-demo.sh
 ```
 
+- **New here? Start with [`docs/QUICKSTART.md`](docs/QUICKSTART.md)** — use it in 3 steps.
 - Deploy `prismd` to a cluster: `kubectl apply -k deploy/`
 - Reproduce the evaluation: `scripts/eval/README.md`
 
@@ -50,9 +51,21 @@ sudo scripts/three-leg-demo.sh
 | **sched** | `bpf/scx_prism.bpf.c`, `integrations/bpfland/` | per-task scheduling priority |
 | **net** | `bpf/consumers/net_policy_prism.bpf.c` | per-packet attribution / policy |
 | **trace** | `bpf/consumers/execsnoop_prism.bpf.c` | identity-tagged events |
+| **sec** | `bpf/consumers/lsm_policy_prism.bpf.c` *(experimental)* | per-workload LSM allow/deny (`-EPERM`) |
 
 The 24-byte map value (identity + a per-identity latency class/weight) is a
-frozen ABI shared byte-for-byte by Go and C — see `spec/README.md`.
+frozen ABI shared byte-for-byte by Go and C — see `spec/README.md`. A consumer's
+own counters can be surfaced to Prometheus with a small exporter, e.g.
+`cmd/prism-net-exporter` (`prism_net_bytes_total{identity="…"}`).
+
+## Docs
+
+- [`docs/QUICKSTART.md`](docs/QUICKSTART.md) — use Prism in 3 steps
+- [`bpf/consumers/README.md`](bpf/consumers/README.md) — write your own consumer (the 3-line core)
+- [`docs/verifying-the-legs.md`](docs/verifying-the-legs.md) — prove each leg works (and that the effect is caused by identity)
+- [`docs/architecture.html`](docs/architecture.html) — diagrams, EN + TH
+- [`docs/central-coordinator-design.md`](docs/central-coordinator-design.md) — design for cluster-wide identity coherence (proposed)
+- [`scripts/eval/README.md`](scripts/eval/README.md) · [`scripts/eval/run-showcase.sh`](scripts/eval/run-showcase.sh) — reproduce the benchmarks
 
 ## Status
 

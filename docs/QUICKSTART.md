@@ -97,4 +97,5 @@ sudo ./prism-net-exporter            # :9465/metrics -> prism_net_bytes_total{id
 [write a consumer](../bpf/consumers/README.md) ·
 [verify the legs](verifying-the-legs.md) ·
 [cluster-wide identity (design)](central-coordinator-design.md) ·
+[run the benchmarks on a VM](run-on-a-vm.md) ·
 [reproduce the benchmarks](../scripts/eval/README.md)

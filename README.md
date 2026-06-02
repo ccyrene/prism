@@ -65,6 +65,7 @@ own counters can be surfaced to Prometheus with a small exporter, e.g.
 - [`docs/verifying-the-legs.md`](docs/verifying-the-legs.md) — prove each leg works (and that the effect is caused by identity)
 - [`docs/architecture.html`](docs/architecture.html) — diagrams, EN + TH
 - [`docs/central-coordinator-design.md`](docs/central-coordinator-design.md) — design for cluster-wide identity coherence (proposed)
+- [`docs/run-on-a-vm.md`](docs/run-on-a-vm.md) — run the in-kernel benchmarks on a throwaway VM (one command)
 - [`scripts/eval/README.md`](scripts/eval/README.md) · [`scripts/eval/run-showcase.sh`](scripts/eval/run-showcase.sh) — reproduce the benchmarks
 
 ## Status
